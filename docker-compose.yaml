@@ -1,0 +1,22 @@
+services:
+  telemetry-bridge:
+    image: device-registry-service:latest
+    container_name: device-registry-service
+    restart: unless-stopped
+
+    ports:
+      # expose your app externally (change left side if you want)
+      - "8080:8080"
+
+    environment:
+      # Spring Boot
+      SERVER_PORT: "8080"
+      SPRING_PROFILES_ACTIVE: "docker"
+
+      # Kafka (remote)
+      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: "${KAFKA_BROKERS}"
+
+    # Optional: if the remote services are not reachable without brokerUri DNS
+    # dns:
+    #   - 1.1.1.1
+    #   - 8.8.8.8

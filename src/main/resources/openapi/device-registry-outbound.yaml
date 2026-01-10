@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: Device Registry Snapshot Event Contract
+  version: 1.0.0
+  description: >
+    Schema for the single event produced by device-registry and published to Kafka topic
+    `device.registry.v1` (log-compacted). The Kafka key MUST be `deviceId`.
+
+paths: {}  # event contract only (no REST endpoints required)
+
+components:
+  schemas:
+
+    DeviceRegistrySnapshotEvent:
+      type: object
+      required:
+        - type
+        - version
+        - messageId
+        - ts
+        - device
+        - status
+        - telemetryMeta
+        - tags
+        - source
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          description: Event type discriminator.
+          enum: [DEVICE_REGISTRY_SNAPSHOT]
+        version:
+          type: integer
+          format: int32
+          description: Event schema version.
+          minimum: 1
+          example: 1
+        messageId:
+          type: string
+          description: Unique message id for idempotency/tracing.
+          example: "b2d7d7a4-6f23-4e5a-9d7c-8d8b9f8b0c41"
+        correlationId:
+          type: string
+          nullable: true
+          description: Optional correlation id propagated across services.
+          example: null
+        ts:
+          type: string
+          format: date-time
+          description: Event creation timestamp (when registry published this snapshot).
+          example: "2026-01-11T12:34:56.789Z"
+
+        device:
+          $ref: "#/components/schemas/DeviceRegistryDevice"
+
+        status:
+          $ref: "#/components/schemas/DeviceStatus"
+
+        telemetryMeta:
+          $ref: "#/components/schemas/DeviceTelemetryMeta"
+
+        tags:
+          type: object
+          description: Free-form internal tags (location, notes, zoneHint, etc).
+          additionalProperties:
+            type: string
+          example:
+            location: balcony
+            zoneHint: pot-03
+
+        source:
+          $ref: "#/components/schemas/DeviceRegistrySource"
+
+    DeviceRegistryDevice:
+      type: object
+      required:
+        - deviceId
+      additionalProperties: false
+      properties:
+        deviceId:
+          type: string
+          description: Unique device identifier (also Kafka key for device.registry.v1).
+          minLength: 1
+          maxLength: 128
+          example: "b43a45349704"
+        deviceName:
+          type: string
+          nullable: true
+          description: Human-friendly device name.
+          maxLength: 256
+          example: "Balcony Arduino"
+        model:
+          type: string
+          nullable: true
+          description: Device model identifier.
+          maxLength: 128
+          example: "Arduino UNO R4 WiFi"
+        fw:
+          type: string
+          nullable: true
+          description: Firmware version string.
+          maxLength: 64
+          example: "1.0.3"
+
+    DeviceTelemetryMeta:
+      type: object
+      required:
+        - lastSeenAt
+      additionalProperties: false
+      properties:
+        lastSeenAt:
+          type: string
+          format: date-time
+          description: Most recent telemetry timestamp seen for this device.
+          example: "2026-01-11T12:34:10.000Z"
+        batteryMv:
+          type: integer
+          format: int32
+          nullable: true
+          description: Last known battery voltage in millivolts.
+          minimum: 0
+          maximum: 20000
+          example: 4914
+        rssi:
+          type: integer
+          format: int32
+          nullable: true
+          description: Last known RSSI in dBm.
+          minimum: -150
+          maximum: 0
+          example: -66
+
+    DeviceRegistrySource:
+      type: object
+      required:
+        - origin
+        - trigger
+      additionalProperties: false
+      properties:
+        origin:
+          type: string
+          description: Producing service identifier.
+          example: "device-registry"
+        trigger:
+          type: string
+          description: What caused the snapshot to be published.
+          enum: [TELEMETRY, ADMIN_COMMAND]
+          example: "TELEMETRY"
+        triggerDetail:
+          type: string
+          nullable: true
+          description: Optional detail (e.g. command type or source topic).
+          example: "iot.plant.events.raw"
+
+    DeviceStatus:
+      type: string
+      description: Current registry status for the device.
+      enum: [DISCOVERED, ACTIVE, SUSPENDED, REVOKED]
+      example: ACTIVE
