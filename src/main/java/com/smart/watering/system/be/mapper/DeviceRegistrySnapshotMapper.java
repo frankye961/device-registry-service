@@ -3,6 +3,7 @@ package com.smart.watering.system.be.mapper;
 import com.smart.watering.model.*;
 import org.mapstruct.*;
 import java.time.Instant;
+import java.util.Date;
 import java.util.Map;
 
 @Mapper
@@ -15,7 +16,7 @@ public interface DeviceRegistrySnapshotMapper {
     @Mapping(target = "ts", expression = "java(publishedAt)")
 
     @Mapping(target = "device", source = "event.device")
-    @Mapping(target = "status", expression = "java(status.name())")
+    @Mapping(target = "status", expression = "java(status)")
     @Mapping(target = "telemetryMeta", source = "event")
     @Mapping(target = "tags", expression = "java(tagsFrom(event))")
 
@@ -25,7 +26,7 @@ public interface DeviceRegistrySnapshotMapper {
             IoTPlantEvent event,
             @Context DeviceStatus status,
             @Context String messageId,
-            @Context Instant publishedAt
+            @Context Date publishedAt
     );
 
     // Nested mappings

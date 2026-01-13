@@ -61,6 +61,8 @@ components:
         - deviceName
         - model
         - fw
+        - batteryMv
+        - rssi
       additionalProperties: false
       properties:
         deviceId:

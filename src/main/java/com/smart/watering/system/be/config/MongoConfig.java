@@ -62,8 +62,8 @@ public class MongoConfig {
 
     @Bean
     @Primary
-    public ReactiveMongoTemplate mongoTemplate(ReactiveMongoDatabaseFactory reactiveFactory,
-                                               MappingMongoConverter converter) {
+    public ReactiveMongoTemplate reactiveMongoTemplate(ReactiveMongoDatabaseFactory reactiveFactory,
+                                                       MappingMongoConverter converter) {
         return new ReactiveMongoTemplate(reactiveFactory, converter);
     }
 }

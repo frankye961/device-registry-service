@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 
 @Slf4j
@@ -57,8 +58,8 @@ public class DeviceRegistryService {
     }
 
     private Mono<Device> updateDevice(Device device, DeviceMeta incomingDevice, Instant ts){
-        if((!device.getBatteryMv().equals(incomingDevice.getBatteryMv().get()) &&  incomingDevice.getBatteryMv().get() < 30)
-                || (!device.getRssi().equals(incomingDevice.getRssi().get()) &&  incomingDevice.getRssi().get() < 3)) {
+        if((!device.getBatteryMv().equals(incomingDevice.getBatteryMv()) &&  incomingDevice.getBatteryMv() < 30)
+                || (!device.getRssi().equals(incomingDevice.getRssi()) &&  incomingDevice.getRssi() < 3)) {
             repository.updateDevice(device.getDeviceId(), device);
             return Mono.just(device);
         }
@@ -74,6 +75,6 @@ public class DeviceRegistryService {
     }
 
     private DeviceRegistrySnapshotEvent mapOutboundEvent(IoTPlantEvent event){
-        return deviceRegistrySnapshotMapper.toSnapshot(event, DeviceStatus.ACTIVE, event.getMessageId(), Instant.now());
+        return deviceRegistrySnapshotMapper.toSnapshot(event, DeviceStatus.ACTIVE, event.getMessageId(), Date.from(Instant.now()));
     }
 }

@@ -219,6 +219,8 @@
                                 <generateBuilders>true</generateBuilders>
                                 <useLombok>true</useLombok>
                                 <useJsonNullable>false</useJsonNullable>
+                                <openApiNullable>false</openApiNullable>
+                                <dateLibrary>java25</dateLibrary>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -243,6 +245,8 @@
                                 <generateBuilders>true</generateBuilders>
                                 <useLombok>true</useLombok>
                                 <useJsonNullable>false</useJsonNullable>
+                                <openApiNullable>false</openApiNullable>
+                                <dateLibrary>java25</dateLibrary>
                             </configOptions>
                         </configuration>
                     </execution>
