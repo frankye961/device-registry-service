@@ -15,7 +15,7 @@ jobs:
   deploy-dev:
     name: Deploy to dev (self-hosted)
     runs-on: self-hosted
-    environment: dev
+   #environment: dev
 
     env:
       REPO_DIR: ${{ vars.DEPLOY_PATH }}      # now this is the repo clone dir
