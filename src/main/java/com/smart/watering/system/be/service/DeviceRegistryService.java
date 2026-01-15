@@ -50,6 +50,17 @@ public class DeviceRegistryService {
                 });
     }
 
+    public Mono<Device> getDevice(String deviceId){
+        return repository.findByDeviceId(deviceId)
+                .switchIfEmpty(Mono.empty());
+    }
+
+    public Mono<Device> updateStatus(String deviceId, String status) {
+        StatusEnum statusEnum = StatusEnum.fromValue(status);
+        return repository.updateStatus(deviceId, statusEnum)
+                .then(repository.findByDeviceId(deviceId));
+    }
+
     private Mono<Device> createDevice(DeviceMeta deviceMeta){
         Device device = mapDeviceMeta(deviceMeta);
         device.setStatus(StatusEnum.ACTIVE);
@@ -77,4 +88,5 @@ public class DeviceRegistryService {
     private DeviceRegistrySnapshotEvent mapOutboundEvent(IoTPlantEvent event){
         return deviceRegistrySnapshotMapper.toSnapshot(event, DeviceStatus.ACTIVE, event.getMessageId(), Date.from(Instant.now()));
     }
+
 }
