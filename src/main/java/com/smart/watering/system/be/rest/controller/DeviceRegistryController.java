@@ -46,6 +46,7 @@ public class DeviceRegistryController {
             @RequestBody String request
     ) {
         return service.updateStatus(deviceId, request)
+                .map(mapper::mapDeviceToDeviceDTO)
                 .map(updated -> ResponseEntity.ok()
                         .eTag("\"" + updated.getVersion() + "\"")
                         .body(updated)
