@@ -6,11 +6,11 @@ services:
 
     ports:
       # expose your app externally (change left side if you want)
-      - "8080:8080"
+      - "8085:8085"
 
     environment:
       # Spring Boot
-      SERVER_PORT: "8080"
+      SERVER_PORT: "8085"
       SPRING_PROFILES_ACTIVE: "docker"
 
       # Kafka (remote)

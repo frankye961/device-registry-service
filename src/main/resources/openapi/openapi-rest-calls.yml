@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: Device Registry Service API
+  version: 1.0.0
+  description: |
+    REST facade over the device registry/materialized state.
+    Devices are auto-created on first-seen events from Kafka/MQTT ingestion.
+
+servers:
+  - url: /api/v1
+
+tags:
+  - name: Devices
+  - name: Admin
+  - name: Enrollment
+
+paths:
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List devices (paged, filterable)
+      operationId: listDevices
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/DeviceStatus"
+        - name: q
+          in: query
+          description: Search by deviceId/deviceName/model (best-effort)
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: Paged list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedDevices"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /devices/{deviceId}:
+    get:
+      tags: [Devices]
+      summary: Get device by deviceId
+      operationId: getDevice
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Device
+          headers:
+            ETag:
+              description: Entity tag (based on version)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags: [Admin]
+      summary: Patch device metadata (admin-only)
+      description: |
+        For human/ops fixes. Does NOT create devices.
+        If the device doesn't exist yet, return 404.
+      operationId: patchDevice
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DevicePatchRequest"
+      responses:
+        "200":
+          description: Updated device
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /devices/{deviceId}/status:
+    put:
+      tags: [Admin]
+      summary: Set device status (block/unblock/deactivate)
+      operationId: setDeviceStatus
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceStatusUpdateRequest"
+      responses:
+        "200":
+          description: Updated device
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /devices/{deviceId}/telemetry:
+    get:
+      tags: [Devices]
+      summary: Get last-known telemetry snapshot (materialized)
+      operationId: getDeviceTelemetry
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Telemetry snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceTelemetrySnapshot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /devices/{deviceId}/credentials/rotate:
+    post:
+      tags: [Admin]
+      summary: Rotate device credentials (admin-only)
+      description: |
+        Triggers credential rotation for a device and emits an event internally.
+        Does not create devices.
+      operationId: rotateDeviceCredentials
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /devices/offline:
+    get:
+      tags: [Devices]
+      summary: List offline devices (derived from lastSeen)
+      operationId: listOfflineDevices
+      parameters:
+        - name: thresholdMinutes
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 30
+      responses:
+        "200":
+          description: Devices considered offline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedDevices"
+
+  /devices/low-battery:
+    get:
+      tags: [Devices]
+      summary: List low-battery devices (derived from batteryMv)
+      operationId: listLowBatteryDevices
+      parameters:
+        - name: thresholdMv
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 3600
+      responses:
+        "200":
+          description: Devices considered low battery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedDevices"
+
+  /admin/materialized-views/rebuild:
+    post:
+      tags: [Admin]
+      summary: Rebuild registry materialized view from Kafka (admin-only)
+      operationId: rebuildMaterializedView
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fromTimestamp:
+                  type: string
+                  format: date-time
+                dryRun:
+                  type: boolean
+                  default: false
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedResponse"
+
+components:
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 64
+      description: Stable device identifier (UUID recommended)
+
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+
+    Sort:
+      name: sort
+      in: query
+      description: Sort fields, e.g. "telemetry.lastSeen,desc"
+      schema:
+        type: string
+        maxLength: 100
+
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Optimistic locking using ETag.
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PreconditionFailed:
+      description: ETag mismatch / optimistic lock failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    DeviceStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, BLOCKED]
+
+    Device:
+      type: object
+      required: [deviceId, createdAt, updatedAt, status, version]
+      properties:
+        deviceId:
+          type: string
+          example: "7c9c6a2e-0f4d-4a8e-9f21-8d3b7f9a1c44"
+        deviceName:
+          type: string
+          maxLength: 120
+          example: "Balcony Arduino"
+        model:
+          type: string
+          maxLength: 80
+          example: "Arduino UNO R4 WiFi"
+        fw:
+          type: string
+          maxLength: 40
+          example: "1.0.3"
+        status:
+          $ref: "#/components/schemas/DeviceStatus"
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+        telemetry:
+          $ref: "#/components/schemas/DeviceTelemetrySnapshot"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 0
+          description: Incremented on each update (used to compute ETag)
+
+    DeviceTelemetrySnapshot:
+      type: object
+      properties:
+        batteryMv:
+          type: integer
+          minimum: 0
+          example: 4970
+        rssi:
+          type: integer
+          example: -61
+        lastSeen:
+          type: string
+          format: date-time
+          example: "2026-01-05T12:10:33.120Z"
+        health:
+          $ref: "#/components/schemas/DeviceHealth"
+
+    DeviceHealth:
+      type: object
+      properties:
+        batteryLevel:
+          type: string
+          enum: [OK, LOW, CRITICAL, UNKNOWN]
+        connectivity:
+          type: string
+          enum: [OK, DEGRADED, OFFLINE, UNKNOWN]
+        notes:
+          type: array
+          items:
+            type: string
+
+    DevicePatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        deviceName:
+          type: string
+        model:
+          type: string
+        fw:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    DeviceStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/DeviceStatus"
+        reason:
+          type: string
+          maxLength: 200
+
+    PagedDevices:
+      type: object
+      required: [items, page, size, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+
+    AcceptedResponse:
+      type: object
+      required: [requestId, acceptedAt]
+      properties:
+        requestId:
+          type: string
+          example: "bdf0e7f5-2e83-4c32-9b50-3d134b2c7c59"
+        acceptedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [timestamp, status, error, message, path]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: "Bad Request"
+        message:
+          type: string
+          example: "Invalid status transition"
+        path:
+          type: string
+          example: "/api/v1/devices/abc/status"
+        correlationId:
+          type: string
+          nullable: true
