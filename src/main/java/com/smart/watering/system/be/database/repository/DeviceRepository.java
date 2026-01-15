@@ -1,6 +1,8 @@
 package com.smart.watering.system.be.database.repository;
 
+import com.smart.watering.model.DeviceStatus;
 import com.smart.watering.system.be.database.model.Device;
+import com.smart.watering.system.be.enums.StatusEnum;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.data.mongodb.repository.Update;
@@ -23,4 +25,10 @@ public interface DeviceRepository extends ReactiveMongoRepository<Device, Intege
             "  'lastSeen': ?#{#device.lastSeen} " +
             "} }")
     Mono<Void> updateDevice(String deviceId, Device device);
+
+    @Query("{ 'deviceId': ?0 }")
+    @Update("{ '$set': { " +
+            "  'status': ?#{#device.batteryMv}, " +
+            "} }")
+    Mono<Device> updateStatus(String deviceId, StatusEnum status);
 }
