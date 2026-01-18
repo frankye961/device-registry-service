@@ -1,5 +1,5 @@
 services:
-  telemetry-bridge:
+  device-registry-service:
     image: device-registry-service:latest
     container_name: device-registry-service
     restart: unless-stopped
@@ -14,7 +14,7 @@ services:
       SPRING_PROFILES_ACTIVE: "docker"
 
       # Kafka (remote)
-      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: "${KAFKA_BROKERS}"
+      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: "${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS}"
 
     # Optional: if the remote services are not reachable without brokerUri DNS
     # dns:
