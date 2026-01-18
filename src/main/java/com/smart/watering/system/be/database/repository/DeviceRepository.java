@@ -1,17 +1,12 @@
 package com.smart.watering.system.be.database.repository;
 
-import com.smart.watering.model.DeviceStatus;
 import com.smart.watering.system.be.database.model.Device;
 import com.smart.watering.system.be.enums.StatusEnum;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.data.mongodb.repository.Update;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
-
-import java.sql.Timestamp;
-import java.util.Optional;
 
 @Repository
 public interface DeviceRepository extends ReactiveMongoRepository<Device, Integer> {
@@ -28,7 +23,7 @@ public interface DeviceRepository extends ReactiveMongoRepository<Device, Intege
 
     @Query("{ 'deviceId': ?0 }")
     @Update("{ '$set': { " +
-            "  'status': ?#{#device.batteryMv}, " +
+            "  'status': ?1 " +
             "} }")
-    Mono<Device> updateStatus(String deviceId, StatusEnum status);
+    Mono<Void> updateStatus(String deviceId, StatusEnum status);
 }

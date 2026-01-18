@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.Date;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -50,42 +49,42 @@ public class DeviceRegistryService {
                 });
     }
 
-    public Mono<Device> getDevice(String deviceId){
+    public Mono<Device> getDevice(String deviceId) {
         return repository.findByDeviceId(deviceId)
                 .switchIfEmpty(Mono.empty());
     }
 
-    public Mono<Device> updateStatus(String deviceId, String status) {
+    public Mono<Void> updateStatus(String deviceId, String status) {
         StatusEnum statusEnum = StatusEnum.fromValue(status);
-        return repository.updateStatus(deviceId, statusEnum)
-                .then(repository.findByDeviceId(deviceId));
+        repository.updateStatus(deviceId, statusEnum);
+        return Mono.empty();
     }
 
-    private Mono<Device> createDevice(DeviceMeta deviceMeta){
+    private Mono<Device> createDevice(DeviceMeta deviceMeta) {
         Device device = mapDeviceMeta(deviceMeta);
         device.setStatus(StatusEnum.ACTIVE);
         repository.save(device);
         return Mono.just(device);
     }
 
-    private Mono<Device> updateDevice(Device device, DeviceMeta incomingDevice, Instant ts){
-        if((!device.getBatteryMv().equals(incomingDevice.getBatteryMv()) &&  incomingDevice.getBatteryMv() < 30)
-                || (!device.getRssi().equals(incomingDevice.getRssi()) &&  incomingDevice.getRssi() < 3)) {
+    private Mono<Device> updateDevice(Device device, DeviceMeta incomingDevice, Instant ts) {
+        if ((!device.getBatteryMv().equals(incomingDevice.getBatteryMv()) && incomingDevice.getBatteryMv() < 30)
+                || (!device.getRssi().equals(incomingDevice.getRssi()) && incomingDevice.getRssi() < 3)) {
             repository.updateDevice(device.getDeviceId(), device);
             return Mono.just(device);
         }
         return Mono.empty();
     }
 
-    private Mono<Device> checkAndExtractDevice(String deviceId){
+    private Mono<Device> checkAndExtractDevice(String deviceId) {
         return repository.findByDeviceId(deviceId);
     }
 
-    private Device mapDeviceMeta(DeviceMeta deviceMeta){
+    private Device mapDeviceMeta(DeviceMeta deviceMeta) {
         return mapper.mapDeviceMetaToDevice(deviceMeta);
     }
 
-    private DeviceRegistrySnapshotEvent mapOutboundEvent(IoTPlantEvent event){
+    private DeviceRegistrySnapshotEvent mapOutboundEvent(IoTPlantEvent event) {
         return deviceRegistrySnapshotMapper.toSnapshot(event, DeviceStatus.ACTIVE, event.getMessageId(), Date.from(Instant.now()));
     }
 
