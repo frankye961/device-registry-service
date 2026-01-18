@@ -5,6 +5,10 @@ spring:
   application:
     name: device-registry-service
 
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI}
+
   kafka:
     producer:
       key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
