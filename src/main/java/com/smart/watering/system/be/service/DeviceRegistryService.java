@@ -33,7 +33,11 @@ public class DeviceRegistryService {
         this.deviceRegistrySnapshotMapper = deviceRegistrySnapshotMapper;
     }
 
-
+    /**
+     * init method
+     * @param event
+     * @return
+     */
     public Mono<DeviceRegistrySnapshotEvent> elaborateDeviceInfo(IoTPlantEvent event) {
         DeviceMeta meta = event.getDevice();
         String deviceId = meta.getDeviceId();
