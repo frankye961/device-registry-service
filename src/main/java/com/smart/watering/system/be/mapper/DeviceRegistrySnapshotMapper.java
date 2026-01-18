@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
-@Mapper
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface DeviceRegistrySnapshotMapper {
 
     @Mapping(target = "type", constant = "DEVICE_REGISTRY_SNAPSHOT")
