@@ -1,7 +1,9 @@
 name: device-registry-service CD
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["device-registry-service CI"]
+    types: [completed]
 
 concurrency:
   group: cd-dev
@@ -15,50 +17,27 @@ jobs:
   deploy-dev:
     name: Deploy to dev (self-hosted)
     runs-on: self-hosted
+    environment: dev
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
 
     env:
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}      # e.g. /opt/device-register-service
-      SERVICE_NAME: ${{ vars.SERVICE_NAME }}    # must match compose service name
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       REGISTRY: ghcr.io
 
-      # If your compose is NOT in repo root, change this:
-      COMPOSE_SRC: docker-compose.yml
-      # If you have an override in repo, keep this name:
-      COMPOSE_OVERRIDE_SRC: docker-compose.override.yml
-
     steps:
-      - name: Checkout repo (source of truth for compose)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
       - name: Sanity checks
         shell: bash
         run: |
           set -euxo pipefail
-
-          : "${DEPLOY_PATH:?DEPLOY_PATH is not set}"
-          : "${SERVICE_NAME:?SERVICE_NAME is not set}"
-          : "${COMPOSE_SRC:?COMPOSE_SRC is not set}"
-
-          echo "Runner:"
           whoami
           id
-
-          echo "Docker:"
           docker version
           docker compose version
-
-          echo "Repo files:"
-          ls -la
-
-          echo "Checking compose exists in repo: $COMPOSE_SRC"
-          test -f "$COMPOSE_SRC"
-
-          echo "Checking deploy folder exists: $DEPLOY_PATH"
           test -d "$DEPLOY_PATH"
-
-          echo "Checking env file exists on server: $DEPLOY_PATH/.env"
+          test -f "$DEPLOY_PATH/docker-compose.yml"
           test -f "$DEPLOY_PATH/.env"
 
       - name: Login to GHCR
@@ -68,51 +47,14 @@ jobs:
           echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" \
             -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-      - name: Sync compose into deploy folder
+      - name: Deploy (pull + replace container)
         shell: bash
         run: |
           set -euxo pipefail
+          cd "$DEPLOY_PATH"
 
-          mkdir -p "$DEPLOY_PATH"
+          docker compose pull "$SERVICE_NAME"
+          docker compose up -d --no-deps --pull always --force-recreate "$SERVICE_NAME"
 
-          # Copy compose from repo workspace -> deploy folder
-          install -m 0644 "$COMPOSE_SRC" "$DEPLOY_PATH/docker-compose.yml"
-
-          # Copy override if present in repo
-          if [ -f "$COMPOSE_OVERRIDE_SRC" ]; then
-            install -m 0644 "$COMPOSE_OVERRIDE_SRC" "$DEPLOY_PATH/docker-compose.override.yml"
-          else
-            rm -f "$DEPLOY_PATH/docker-compose.override.yml" || true
-          fi
-
-          echo "Deploy folder content:"
-          ls -la "$DEPLOY_PATH"
-
-      - name: Deploy (pull + recreate)
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          COMPOSE_ARGS=(-f "$DEPLOY_PATH/docker-compose.yml")
-          if [ -f "$DEPLOY_PATH/docker-compose.override.yml" ]; then
-            COMPOSE_ARGS+=(-f "$DEPLOY_PATH/docker-compose.override.yml")
-          fi
-
-          echo "Compose config (rendered):"
-          docker compose "${COMPOSE_ARGS[@]}" --env-file "$DEPLOY_PATH/.env" config
-
-          echo "Pulling:"
-          docker compose "${COMPOSE_ARGS[@]}" --env-file "$DEPLOY_PATH/.env" pull "$SERVICE_NAME"
-
-          echo "Applying:"
-          docker compose "${COMPOSE_ARGS[@]}" --env-file "$DEPLOY_PATH/.env" up -d \
-            --no-deps \
-            --pull always \
-            --force-recreate \
-            "$SERVICE_NAME"
-
-          echo "Containers:"
           docker ps
-
-          echo "Recent logs:"
-          docker compose "${COMPOSE_ARGS[@]}" --env-file "$DEPLOY_PATH/.env" logs --no-color --tail=120 "$SERVICE_NAME" || true
+          docker compose logs --no-color --tail=120 "$SERVICE_NAME" || true

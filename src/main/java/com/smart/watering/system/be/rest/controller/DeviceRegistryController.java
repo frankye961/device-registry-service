@@ -5,7 +5,6 @@ import com.smart.watering.system.be.rest.dto.DeviceDTO;
 import com.smart.watering.system.be.rest.dto.DeviceTelemetrySnapshotDTO;
 import com.smart.watering.system.be.service.DeviceRegistryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -37,19 +36,15 @@ public class DeviceRegistryController {
      * Set device status (BLOCKED / ACTIVE / INACTIVE)
      */
     @PutMapping("/{deviceId}/status")
-    public Mono<ResponseEntity<DeviceDTO>> updateStatus(
+    public Mono<ResponseEntity<Object>> updateStatus(
             @PathVariable String deviceId,
             @RequestBody String request
     ) {
         return service.updateStatus(deviceId, request)
-                .map(mapper::mapDeviceToDeviceDTO)
-                .map(updated -> ResponseEntity.ok()
-                        .eTag("\"" + updated.getVersion() + "\"")
-                        .body(updated)
-                )
-                .onErrorResume(RuntimeException.class,
-                        e -> Mono.just(ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).build()))
-                .defaultIfEmpty(ResponseEntity.notFound().build());
+                .thenReturn(ResponseEntity.ok().build())
+                .onErrorResume(ex ->
+                        Mono.just(ResponseEntity.badRequest().build())
+                );
     }
 
     /**
