@@ -7,8 +7,9 @@ import com.smart.watering.system.be.rest.dto.DeviceTelemetrySnapshotDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface DeviceEventMapper {
     Device mapDeviceMetaToDevice(DeviceMeta device);
 
