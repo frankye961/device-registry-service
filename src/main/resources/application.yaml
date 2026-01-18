@@ -7,7 +7,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI}
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/gladys_db}
 
   kafka:
     producer:
