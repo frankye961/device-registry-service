@@ -26,70 +26,72 @@ public class DeviceRegistryService {
     private final DeviceRegistrySnapshotMapper deviceRegistrySnapshotMapper;
 
     @Autowired
-    public DeviceRegistryService(DeviceRepository repository, DeviceEventMapper mapper,
+    public DeviceRegistryService(DeviceRepository repository,
+                                 DeviceEventMapper mapper,
                                  DeviceRegistrySnapshotMapper deviceRegistrySnapshotMapper) {
         this.repository = repository;
         this.mapper = mapper;
         this.deviceRegistrySnapshotMapper = deviceRegistrySnapshotMapper;
     }
 
-    /**
-     * init method
-     * @param event
-     * @return
-     */
     public Mono<DeviceRegistrySnapshotEvent> elaborateDeviceInfo(IoTPlantEvent event) {
         DeviceMeta meta = event.getDevice();
         String deviceId = meta.getDeviceId();
+        Instant ts = event.getTs().toInstant();
 
-        return checkAndExtractDevice(deviceId)
-                .switchIfEmpty(createDevice(meta))
-                .flatMap(device -> {
-                    if (!device.getStatus().equals(StatusEnum.ACTIVE)) {
-                        return Mono.empty();
-                    }
-                    return updateDevice(device, meta, event.getTs().toInstant())
-                            .then(Mono.just(mapOutboundEvent(event)));
-                });
+        return repository.findByDeviceId(deviceId)
+                .switchIfEmpty(createDevice(meta, ts))
+                .filter(d -> StatusEnum.ACTIVE.equals(d.getStatus()))
+                .flatMap(d -> upsertTelemetry(d, meta, ts))
+                .map(updated -> mapOutboundEvent(event));
     }
 
     public Mono<Device> getDevice(String deviceId) {
-        return repository.findByDeviceId(deviceId)
-                .switchIfEmpty(Mono.empty());
+        return repository.findByDeviceId(deviceId);
     }
 
     public Mono<Void> updateStatus(String deviceId, String status) {
         StatusEnum statusEnum = StatusEnum.fromValue(status);
-        repository.updateStatus(deviceId, statusEnum);
-        return Mono.empty();
+        return repository.updateStatus(deviceId, statusEnum).then();
     }
 
-    private Mono<Device> createDevice(DeviceMeta deviceMeta) {
-        Device device = mapDeviceMeta(deviceMeta);
+    private Mono<Device> createDevice(DeviceMeta meta, Instant ts) {
+        Device device = mapper.mapDeviceMetaToDevice(meta);
         device.setStatus(StatusEnum.ACTIVE);
-        repository.save(device);
-        return Mono.just(device);
+        device.setLastSeen(java.sql.Timestamp.from(ts));
+        log.info("Device to save {}", device);
+        return repository.save(device);
     }
 
-    private Mono<Device> updateDevice(Device device, DeviceMeta incomingDevice, Instant ts) {
-        if ((!device.getBatteryMv().equals(incomingDevice.getBatteryMv()) && incomingDevice.getBatteryMv() < 30)
-                || (!device.getRssi().equals(incomingDevice.getRssi()) && incomingDevice.getRssi() < 3)) {
-            repository.updateDevice(device.getDeviceId(), device);
-            return Mono.just(device);
+    private Mono<Device> upsertTelemetry(Device existing, DeviceMeta incoming, Instant ts) {
+        boolean changed = false;
+
+        Integer newBattery = incoming.getBatteryMv();
+        Integer newRssi = incoming.getRssi();
+
+        if (newBattery != null && !newBattery.equals(existing.getBatteryMv())) {
+            existing.setBatteryMv(newBattery);
+            changed = true;
         }
-        return Mono.empty();
-    }
 
-    private Mono<Device> checkAndExtractDevice(String deviceId) {
-        return repository.findByDeviceId(deviceId);
-    }
+        if (newRssi != null && !newRssi.equals(existing.getRssi())) {
+            existing.setRssi(newRssi);
+            changed = true;
+        }
 
-    private Device mapDeviceMeta(DeviceMeta deviceMeta) {
-        return mapper.mapDeviceMetaToDevice(deviceMeta);
+        existing.setLastSeen(java.sql.Timestamp.from(ts));
+        changed = true;
+
+        return changed ? repository.save(existing) : Mono.just(existing);
     }
 
     private DeviceRegistrySnapshotEvent mapOutboundEvent(IoTPlantEvent event) {
-        return deviceRegistrySnapshotMapper.toSnapshot(event, DeviceStatus.ACTIVE, event.getMessageId(), Date.from(Instant.now()));
+        return deviceRegistrySnapshotMapper.toSnapshot(
+                event,
+                DeviceStatus.ACTIVE,
+                event.getMessageId(),
+                Date.from(Instant.now())
+        );
     }
-
 }
+

@@ -3,6 +3,7 @@ package com.smart.watering.system.be.database.model;
 import com.smart.watering.system.be.enums.StatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -11,6 +12,7 @@ import java.sql.Timestamp;
 
 @Setter
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 @Document(value = "device")
 public class Device {

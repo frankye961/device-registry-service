@@ -11,6 +11,7 @@ import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface DeviceEventMapper {
+
     Device mapDeviceMetaToDevice(DeviceMeta device);
 
     @Mappings({
