@@ -35,7 +35,7 @@ public interface DeviceEventMapper {
                 .batteryMv(device.getBatteryMv())
                 .rssi(device.getRssi())
                 .lastSeen(device.getLastSeen() != null
-                        ? device.getLastSeen().toInstant()
+                        ? device.getLastSeen()
                         : null)
                 .build();
     }

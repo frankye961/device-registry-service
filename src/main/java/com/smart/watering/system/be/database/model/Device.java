@@ -8,7 +8,8 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Date;
 
 @Setter
 @Getter
@@ -24,6 +25,6 @@ public class Device {
     private String fw;
     private Integer batteryMv;
     private Integer rssi;
-    private Timestamp lastSeen;
+    private Instant lastSeen;
     private StatusEnum status;
 }

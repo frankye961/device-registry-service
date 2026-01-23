@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.Date;
-import static java.sql.Timestamp.from;
 
 @Slf4j
 @Service
@@ -59,7 +58,7 @@ public class DeviceRegistryService {
     private Mono<Device> createDevice(DeviceMeta meta, Instant ts) {
         Device device = mapper.mapDeviceMetaToDevice(meta);
         device.setStatus(StatusEnum.ACTIVE);
-        device.setLastSeen(java.sql.Timestamp.from(ts));
+        device.setLastSeen(ts);
         log.info("Device to save {}", device);
         return repository.save(device);
     }
@@ -80,7 +79,7 @@ public class DeviceRegistryService {
             changed = true;
         }
 
-        existing.setLastSeen(from(ts));
+        existing.setLastSeen(ts);
         changed = true;
 
         return changed ? repository.save(existing) : Mono.just(existing);
