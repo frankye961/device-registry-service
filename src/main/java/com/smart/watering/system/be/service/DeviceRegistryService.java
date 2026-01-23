@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.Date;
+import static java.sql.Timestamp.from;
 
 @Slf4j
 @Service
@@ -79,7 +80,7 @@ public class DeviceRegistryService {
             changed = true;
         }
 
-        existing.setLastSeen(java.sql.Timestamp.from(ts));
+        existing.setLastSeen(from(ts));
         changed = true;
 
         return changed ? repository.save(existing) : Mono.just(existing);
