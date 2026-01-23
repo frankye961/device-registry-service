@@ -15,7 +15,7 @@ services:
 
       # Kafka (remote)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BROKERS}"
-      SPRING_DATA_MONGODB_URI: "mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/gladys_db?authSource=admin"
+      SPRING_MONGODB_URI: "mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/gladys_db?authSource=admin"
 
     # Optional: if the remote services are not reachable without brokerUri DNS
     # dns:

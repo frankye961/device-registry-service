@@ -11,7 +11,7 @@ spring:
       - org.springframework.boot.data.mongodb.autoconfigure.DataMongoAutoConfiguration
 
   mongodb:
-    uri: ${SPRING_DATA_MONGODB_URI}
+    uri: ${SPRING_MONGODB_URI}
 
   kafka:
     producer:
